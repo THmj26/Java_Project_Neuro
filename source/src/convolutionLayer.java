@@ -5,6 +5,7 @@ public class convolutionLayer {
         kernel=k;
         bias=b;
     }
+    //这里是对传入的二维数据做一个卷积运算
     public double[][] forward(double[][] input){
         int inputRow=input.length;
         int inputColumn=input[0].length;
