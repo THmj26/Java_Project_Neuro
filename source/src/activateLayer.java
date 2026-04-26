@@ -1,16 +1,25 @@
-//这里是将激活步骤分离出来 但是我觉得没有必要
-//直接在卷积层就加入了激活步骤
+//这里是对所有的卷积结果图片进行激活
+//在这里引入激活层是因为 每一个神经元一个激活函数太麻烦
+//而且一般而言同一层中的神经元的激活函数是一致的
 public class activateLayer {
     private activateFuction af;
     activateLayer(activateFuction a){
         af=a;
     }
 
-    public double[][] forward(double[][] input){
-        double[][] output=new double[input.length][input[0].length];
-        for(int i=0;i<input.length;i++){
-            for(int j=0;j<input[0].length;j++){
-                output[i][j]=af.activate(input[i][j]);
+    public double[][][] forward(double[][][] input){
+        int pictureI=input.length;//图片数量
+        int pictureR=input[0].length;//单张图片的行数
+        int pictureC=input[0][0].length;//列数
+
+        double[][][] output=new double[pictureI][pictureR][pictureC];
+        //对每一张图片中的每一个顶点上的数据进行激活
+        //外层是对图片遍历
+        for(int c=0;c<pictureI;c++){
+            for(int i=0;i<pictureR;i++){
+                for(int j=0;j<pictureC;j++){
+                    output[c][i][j]=af.activate(input[c][i][j]);
+                }
             }
         }
         return output;
