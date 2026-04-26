@@ -5,6 +5,7 @@ public class convolutionLayer {
         kernel=k;
         bias=b;
     }
+    //这里是对传入的二维数据做一个卷积运算
     public double[][] forward(double[][] input){
         int inputRow=input.length;
         int inputColumn=input[0].length;
@@ -22,7 +23,8 @@ public class convolutionLayer {
                 double sum=0.0;
                 for(int ki=0;ki<kernelR;ki++){
                     for(int kj=0;kj<kernelC;kj++){
-                        sum+=input[i+ki][j+kj]*kernel[kj][ki];
+                        sum+=input[i+ki][j+kj]*kernel[ki][kj];
+                        //卷积运算和矩阵乘法不同 其是矩阵对应位置相乘
                         //对每一个运算后的矩阵上的所有点求和
                     }
                 }
