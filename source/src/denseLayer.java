@@ -3,9 +3,9 @@
 public class denseLayer {
     double[][] weight;
     //二阶数组 一行代表一个神经元的权值
-    double bias;
+    double[] bias;
 
-    public denseLayer(double[][] w,double b){
+    public denseLayer(double[][] w,double[] b){
         weight=w;
         bias=b;
     }
@@ -19,7 +19,7 @@ public class denseLayer {
             for(int j=0;j<inputSize;j++){
                 sum+=weight[i][j]*input[j];
             }
-            output[i]=sum+bias;
+            output[i]=sum+bias[i];
         }
         return output;
     }
