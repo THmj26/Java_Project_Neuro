@@ -37,7 +37,6 @@ public class DataLoader {
         currentIndex = 0;
     }
 
-    // 返回当前待读取图片的文件名（未读取时可用于日志）
     public String currentFileName() {
         if (currentIndex < imageFiles.length)
             return imageFiles[currentIndex].getName();
@@ -52,7 +51,6 @@ public class DataLoader {
         return img;
     }
 
-    // 将文件夹中所有图片逐一喂给 CNN，返回每张图片对应的输出
     public double[][] feedAll(CNN cnn) throws IOException {
         reset();
         double[][] results = new double[imageFiles.length][];
@@ -70,7 +68,6 @@ public class DataLoader {
         int h = img.getHeight();
         int w = img.getWidth();
 
-        // 只输出灰度图：[1][height][width]
         double[][] channel = new double[h][w];
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
@@ -78,7 +75,6 @@ public class DataLoader {
                 int r = (rgb >> 16) & 0xFF;
                 int g = (rgb >> 8) & 0xFF;
                 int b = rgb & 0xFF;
-                // 标准灰度公式
                 double gray = 0.299 * r + 0.587 * g + 0.114 * b;
                 channel[i][j] = normalize ? gray / 255.0 : gray;
             }
