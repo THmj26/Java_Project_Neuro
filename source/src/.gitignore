@@ -1,0 +1,16 @@
+# 编译产物
+out/
+bin/
+*.class
+target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Python
+__pycache__/
+
+# 缩放后的图（运行 resize.py 自动生成）
+images/
