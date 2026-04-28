@@ -4,6 +4,7 @@ public class denseLayer {
     double[][] weight;
     //二阶数组 一行代表一个神经元的权值
     double[] bias;
+    double[] lastInput;
 
     public denseLayer(double[][] w,double[] b){
         weight=w;
@@ -12,6 +13,7 @@ public class denseLayer {
     public double[] forward(double[] input){
         int outputSize=weight.length;
         int inputSize=input.length;
+        lastInput=input.clone();
 
         double[] output=new double[outputSize];
         for(int i=0;i<outputSize;i++){
@@ -24,5 +26,6 @@ public class denseLayer {
         return output;
     }
 
-
+    double[] backward(double[] pdz,double learningRate){
+    }
 }

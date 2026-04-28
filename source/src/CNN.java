@@ -22,4 +22,7 @@ public class CNN {
         double[] denseOutput = dL.forward(flat);
         return avL.forward(denseOutput);
     }
+    public void backward(double[] pdy,double learningRate){
+
+    }
 }
