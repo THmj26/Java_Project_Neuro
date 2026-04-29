@@ -73,6 +73,13 @@ public class convNeuron {
 
                             gradKernel[c][ki][kj] += grad * lastInput[c][inputR][inputC];
                             pdx[c][inputR][inputC] += grad * kernel[c][ki][kj];
+                            //这里求和的原因是因为 卷积中 一个输出会和多个k与x有关
+                            //其实就是找最后结果 是对应原本输入中的那些数据
+                            //所以想要寻找位置只需要再重新走一遍来时路就可以了
+                            //那么从节点i，j位置来说kernel中每一个k对应的输入就是ki+i，kj+j
+
+                            //同样的对于x的偏导来说也是一样的 求和x有关的k的和
+                            //那么
                         }
                     }
                 }
@@ -87,7 +94,7 @@ public class convNeuron {
             }
         }
 
-        bias -= learningRate * gradBias;
+        bias -= learningRate * gradBias;//这里的gradbias就是上一层中所有的梯度之和
 
         return pdx;
     }
