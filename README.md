@@ -8,16 +8,4 @@ A convolutional neural network implemented in pure Java with no deep learning li
 - Java 8+
 - Python 3.x + Pillow (for image preprocessing only)
 
-## Getting Started
 
-**Step 1: Generate dataset**
-```bash
-python resize.py
-```
-Resizes the 12 original images in `raw/` to 64×64 and saves them to `images/`.
-
-**Step 2: Run**
-
-Open the project in IntelliJ or VSCode and run the `main` method in `train.java`.
-
-## Network Architecture
