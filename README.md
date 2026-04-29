@@ -1,4 +1,4 @@
-<img width="1232" height="1652" alt="6f888e85d006c24df65880d15816ccd6" src="https://github.com/user-attachments/assets/6e85c957-8830-40ce-8dc0-dbbe95557ae8" />_Neuro
+Neuro
 简单的卷积神经网络
 # Chinese Zodiac Image Classifier - CNN from Scratch (Java)
 
