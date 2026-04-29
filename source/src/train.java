@@ -2,8 +2,7 @@ import java.io.IOException;
 import java.util.Random;
 
 // 文件：train.java
-// 功能：构建CNN网络，加载十二生肖图片，执行前向传播并计算MSE Loss
-// 当前阶段：仅前向传播，权重随机初始化，尚未实现反向传播训练
+// 功能：构建CNN网络，加载十二生肖图片，执行前向传播、计算MSE Loss，并进行反向传播训练
 public class train {
     public static void main(String[] args) throws IOException {
 
@@ -15,6 +14,8 @@ public class train {
         int numFilters  = 8;         // 卷积层filter数量
         int kernelSize  = 5;         // 卷积核大小：5x5
         int channels    = 1;         // 输入通道数：灰度图为1
+        int epochs      = 200;        // 训练轮数
+        double learningRate = 0.001; // 学习率
 
         // ══════════════════════════════════════════════════════════
         // 1. 加载图片
@@ -83,36 +84,70 @@ public class train {
         CNN cnn = new CNN(cL, aL, pL, fL, dL, avL);
 
         // ══════════════════════════════════════════════════════════
-        // 5. 前向传播 + 计算MSE Loss
+        // 5. 训练：前向传播 + 计算MSE Loss + 反向传播
+        // ══════════════════════════════════════════════════════════
+        for (int epoch = 0; epoch < epochs; epoch++) {
+            loader.reset();
+            double totalLoss = 0;
+            int idx = 0;
+            int correct = 0;
+
+            while (loader.hasNext()) {
+                double[][][] img = loader.next();
+
+                // 前向传播：图片 → 12个生肖的预测概率
+                double[] out = cnn.forward(img);
+
+                // one-hot目标向量：第idx个位置为1，其余为0
+                double[] target = new double[numClasses];
+                target[idx] = 1.0;
+
+                // MSE Loss = mean((output - target)^2)
+                double loss = mseLoss(out, target);
+                totalLoss += loss;
+
+                // MSE 对输出的梯度，用来开始反向传播
+                double[] gradient = mseGradient(out, target);
+
+                // 反向传播：更新 dense weight/bias 和 conv kernel/bias
+                cnn.backward(gradient, learningRate);
+
+                // 找预测概率最高的类别
+                int pred = maxIndex(out);
+                if (pred == idx) {
+                    correct++;
+                }
+
+                idx++;
+            }
+
+            System.out.printf("epoch=%d | avg loss=%.6f | accuracy=%d/%d%n",
+                    epoch, totalLoss / idx, correct, idx);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 6. 训练后重新测试每张图片
         // ══════════════════════════════════════════════════════════
         loader.reset();
         double totalLoss = 0;
         int idx = 0;
+        int correct = 0;
 
         while (loader.hasNext()) {
             String name = loader.currentFileName();
             double[][][] img = loader.next();
 
-            // 前向传播：图片 → 12个生肖的预测概率
             double[] out = cnn.forward(img);
 
-            // one-hot目标向量：第idx个位置为1，其余为0
             double[] target = new double[numClasses];
             target[idx] = 1.0;
 
-            // MSE Loss = mean((output - target)^2)
-            double loss = 0;
-            for (int i = 0; i < numClasses; i++) {
-                double diff = out[i] - target[i];
-                loss += diff * diff;
-            }
-            loss /= numClasses;
+            double loss = mseLoss(out, target);
             totalLoss += loss;
 
-            // 找预测概率最高的类别
-            int pred = 0;
-            for (int i = 1; i < numClasses; i++) {
-                if (out[i] > out[pred]) pred = i;
+            int pred = maxIndex(out);
+            if (pred == idx) {
+                correct++;
             }
 
             System.out.printf("[%d] %s | 真实=%d 预测=%d loss=%.4f%n",
@@ -120,7 +155,7 @@ public class train {
             idx++;
         }
 
-        System.out.printf("%n平均 loss: %.4f%n", totalLoss / idx);
+        System.out.printf("%n训练后平均 loss: %.4f | accuracy=%d/%d%n", totalLoss / idx, correct, idx);
 
         // ══════════════════════════════════════════════════════════
         // 6. 一致性测试：同一张图片输入两次，预测结果应完全相同
@@ -148,5 +183,41 @@ public class train {
         System.out.print("\n第二次输出: ");
         for (double v : out2) System.out.printf("%.4f ", v);
         System.out.println();
+    }
+    private static double mseLoss(double[] output, double[] target) {
+        if (output.length != target.length) {
+            throw new IllegalArgumentException("output length must match target length.");
+        }
+
+        double loss = 0.0;
+        for (int i = 0; i < output.length; i++) {
+            double diff = output[i] - target[i];
+            loss += diff * diff;
+        }
+
+        return loss / output.length;
+    }
+
+    private static double[] mseGradient(double[] output, double[] target) {
+        if (output.length != target.length) {
+            throw new IllegalArgumentException("output length must match target length.");
+        }
+
+        double[] gradient = new double[output.length];
+        for (int i = 0; i < output.length; i++) {
+            gradient[i] = 2.0 * (output[i] - target[i]) / output.length;
+        }
+
+        return gradient;
+    }
+
+    private static int maxIndex(double[] values) {
+        int max = 0;
+        for (int i = 1; i < values.length; i++) {
+            if (values[i] > values[max]) {
+                max = i;
+            }
+        }
+        return max;
     }
 }

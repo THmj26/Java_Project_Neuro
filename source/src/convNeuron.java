@@ -2,6 +2,8 @@ public class convNeuron {
     //一个卷积计算就是相当于之前NN中的一个神经元 是卷积运算中的基本单位
     double[][][] kernel;
     double bias;
+    double[][][] lastInput;
+
     convNeuron(double[][][] k, double b){
         kernel=k;
         bias=b;
@@ -10,6 +12,7 @@ public class convNeuron {
     //每一张图像有其对应的kernel
     //每一个点的卷积结果等于 每一个kernel和对应输入 在这个点的卷积结果之和
     public double[][] forward(double[][][] input){
+        lastInput = input;
         int pictures=input.length;
         int inputRow=input[0].length;
         int inputColumn=input[0][0].length;
@@ -30,6 +33,7 @@ public class convNeuron {
                 //以及遍历输入的数据
                 for (int c=0;c<pictures;c++){
                     //c可以用来控制第几张图片
+                    //在这里可以讲kernel看作NN中每一个神经元的权重！
                     for(int ki=0;ki<kernelR;ki++){
                         for(int kj=0;kj<kernelC;kj++){
                             sum+=input[c][i+ki][j+kj]*kernel[c][ki][kj];
@@ -39,20 +43,52 @@ public class convNeuron {
                 output[i][j]=sum+bias;
             }
         }
-//        最外层的ij代表着起始点
-//        for(int i=0;i<outR;i++){
-//            for(int j=0;j<outC;j++){
-//                double sum=0.0;
-//                for(int ki=0;ki<kernelR;ki++){
-//                    for(int kj=0;kj<kernelC;kj++){
-//                        sum+=input[i+ki][j+kj]*kernel[ki][kj];
-//                        //卷积运算和矩阵乘法不同 其是矩阵对应位置相乘
-//                        //对每一个运算后的矩阵上的所有点求和
-//                    }
-//                }
-//                output[i][j]=sum+bias;
-//            }
-//        }
         return output;
+    }
+    public double[][][] backward(double[][] pdz, double learningRate) {
+        int pictures = lastInput.length;
+        int inputRow = lastInput[0].length;
+        int inputColumn = lastInput[0][0].length;
+
+        int kernelR = kernel[0].length;
+        int kernelC = kernel[0][0].length;
+
+        int outR = pdz.length;
+        int outC = pdz[0].length;
+
+        double[][][] pdx = new double[pictures][inputRow][inputColumn];
+        double[][][] gradKernel = new double[pictures][kernelR][kernelC];
+        double gradBias = 0.0;
+
+        for (int i = 0; i < outR; i++) {
+            for (int j = 0; j < outC; j++) {
+                double grad = pdz[i][j];
+                gradBias += grad;
+
+                for (int c = 0; c < pictures; c++) {
+                    for (int ki = 0; ki < kernelR; ki++) {
+                        for (int kj = 0; kj < kernelC; kj++) {
+                            int inputR = i + ki;
+                            int inputC = j + kj;
+
+                            gradKernel[c][ki][kj] += grad * lastInput[c][inputR][inputC];
+                            pdx[c][inputR][inputC] += grad * kernel[c][ki][kj];
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int c = 0; c < pictures; c++) {
+            for (int ki = 0; ki < kernelR; ki++) {
+                for (int kj = 0; kj < kernelC; kj++) {
+                    kernel[c][ki][kj] -= learningRate * gradKernel[c][ki][kj];
+                }
+            }
+        }
+
+        bias -= learningRate * gradBias;
+
+        return pdx;
     }
 }

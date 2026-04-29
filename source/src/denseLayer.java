@@ -27,5 +27,20 @@ public class denseLayer {
     }
 
     double[] backward(double[] pdz,double learningRate){
+        if(lastInput==null)
+            throw new IllegalArgumentException("never called forward!");
+        if(pdz.length!= weight.length)
+            throw new IllegalArgumentException("pdz's length must match neurons' size");
+
+        double[] pdx=new double[weight[0].length];
+        //pdx 代表传入展开层的对于x的偏导数
+        for(int c=0;c<weight.length;c++){
+            for(int i=0;i< weight[0].length;i++){
+                pdx[i]+=pdz[c]*weight[c][i];//计算对于x的偏导数
+                weight[c][i]-=pdz[c]*lastInput[i]*learningRate;//更新这一层的权重
+            }
+            bias[c]-=pdz[c]*learningRate;//更新每一个神经元的偏移量
+        }
+        return pdx;
     }
 }
