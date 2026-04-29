@@ -7,5 +7,6 @@ A convolutional neural network implemented in pure Java with no deep learning li
 ## Requirements
 - Java 8+
 - Python 3.x + Pillow (for image preprocessing only)
+- <img width="123" height="141" alt="1197a1cc573f4f8111444c08479ca588" src="https://github.com/user-attachments/assets/cd4fb4d7-1130-44d7-b421-13a6c75f002a" />
 
 
