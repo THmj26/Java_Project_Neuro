@@ -4,13 +4,13 @@
 public class test {
     public static void main(String[] args) {
 
-        // 4×4 灰度图（单通道）
+        // 4×4 灰度图（单通道），值归一化到 [0,1]，与 train.java 中 /255 保持一致
         double[][][] input = {
                 {
-                        { 1,  2,  3,  4},
-                        { 5,  6,  7,  8},
-                        { 9, 10, 11, 12},
-                        {13, 14, 15, 16}
+                        {0.0625, 0.1250, 0.1875, 0.2500},
+                        {0.3125, 0.3750, 0.4375, 0.5000},
+                        {0.5625, 0.6250, 0.6875, 0.7500},
+                        {0.8125, 0.8750, 0.9375, 1.0000}
                 }
         };
 
@@ -36,8 +36,8 @@ public class test {
 
         // 目标：第0类概率=1，第1类概率=0
         double[] target       = {1.0, 0.0};
-        double   learningRate = 0.01;
-        int      epochs       = 1000;
+        double   learningRate = 0.1;
+        int      epochs       = 10000;
 
         // 训练循环：每100轮打印一次 loss 和输出，观察 loss 是否持续下降
         for (int epoch = 0; epoch < epochs; epoch++) {
