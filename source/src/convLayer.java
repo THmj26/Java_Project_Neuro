@@ -21,7 +21,7 @@ public class convLayer {
                for(int p=0;p<oneNeuronGradient.length;p++){
                    for(int k=0;k<oneNeuronGradient[0].length;k++){
                        for(int j=0;j<oneNeuronGradient[0][0].length;j++){
-                           gradient[p][k][j]+=oneNeuronGradient[p][i][j];
+                           gradient[p][k][j]+=oneNeuronGradient[p][k][j];
                        }
                    }
                }
