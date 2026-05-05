@@ -14,7 +14,10 @@ public class activateLayer {
     // 前向传播：对所有特征图逐元素激活
     // input/output: [numFilters][rows][cols]
     public double[][][] forward(double[][][] input) {
-        lastInput = input.clone();
+        lastInput = new double[input.length][input[0].length][input[0][0].length];
+        for (int c = 0; c < input.length; c++)
+            for (int i = 0; i < input[c].length; i++)
+                lastInput[c][i] = input[c][i].clone();
         int C = input.length;
         int R = input[0].length;
         int cols = input[0][0].length;
