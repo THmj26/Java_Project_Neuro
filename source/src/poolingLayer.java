@@ -19,7 +19,10 @@ public class poolingLayer {
     // input: [numFilters][inputRow][inputCol]
     // 返回:  [numFilters][outRow][outCol]，每个窗口取最大值
     public double[][][] forward(double[][][] input) {
-        lastInput = input.clone();              // 缓存输入，反向传播重新定位 max 位置时需要
+        lastInput = new double[input.length][input[0].length][input[0][0].length];
+        for (int c = 0; c < input.length; c++)
+            for (int i = 0; i < input[c].length; i++)
+                lastInput[c][i] = input[c][i].clone(); // 深拷贝，防止反向传播时原数组被修改
         int C    = input.length;                // 特征图数量
         int inR  = input[0].length;             // 输入特征图行数
         int inC  = input[0][0].length;          // 输入特征图列数
@@ -61,7 +64,7 @@ public class poolingLayer {
             for (int i = 0; i < outR; i++) {             // 遍历输出的每一行
                 for (int j = 0; j < outC; j++) {         // 遍历输出的每一列
                     double max = Double.NEGATIVE_INFINITY; // 重新寻找该窗口的最大值
-                    int maxR = -1, maxC = -1;              // 记录最大值所在的输入位置
+                    int maxR = i * stride, maxC = j * stride; // 初始化为窗口左上角，确保始终有效
                     for (int ki = 0; ki < poolSize; ki++) {   // 遍历池化窗口的每一行
                         for (int kj = 0; kj < poolSize; kj++) { // 遍历池化窗口的每一列
                             int r   = i * stride + ki;     // 对应输入的行索引
