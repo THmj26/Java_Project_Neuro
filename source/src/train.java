@@ -1,123 +1,91 @@
 import java.io.IOException;
 import java.util.Random;
 
-// 文件：train.java
-// 功能：构建CNN网络，加载十二生肖图片，执行前向传播、计算MSE Loss，并进行反向传播训练
+// 主训练脚本：加载十二生肖图片，初始化 CNN，执行多轮前向+反向传播训练
+// 流程：初始化权重 → 动态推导 flatten 维度 → 训练循环（前向/MSE/反向/更新）→ 测试报告
 public class train {
     public static void main(String[] args) throws IOException {
 
-        // ══════════════════════════════════════════════════════════
-        // 超参数配置
-        // ══════════════════════════════════════════════════════════
-        String imageDir = "images";  // 图片目录（64x64灰度图）
-        int numClasses  = 12;        // 输出类别数：十二生肖
-        int numFilters  = 8;         // 卷积层filter数量
-        int kernelSize  = 5;         // 卷积核大小：5x5
-        int channels    = 1;         // 输入通道数：灰度图为1
-        int epochs      = 200;        // 训练轮数
-        double learningRate = 0.001; // 学习率
+        // ── 超参数 ──────────────────────────────────────────────────
+        String imageDir     = "images"; // 图片目录（64×64 灰度图）
+        int numClasses      = 12;       // 输出类别数：十二生肖
+        int numFilters      = 8;        // 卷积层 filter 数量
+        int kernelSize      = 5;        // 卷积核大小：5×5
+        int channels        = 1;        // 输入通道数：灰度图为 1
+        int epochs          = 200;      // 训练轮数
+        double learningRate = 0.001;    // SGD 学习率
 
-        // ══════════════════════════════════════════════════════════
-        // 1. 加载图片
-        // ══════════════════════════════════════════════════════════
+        // ── 1. 加载图片 ──────────────────────────────────────────────
         DataLoader loader = new DataLoader(imageDir, true);
         System.out.println("图片总数: " + loader.size());
 
-        // ══════════════════════════════════════════════════════════
-        // 2. 初始化卷积层
-        // ══════════════════════════════════════════════════════════
+        // ── 2. 初始化卷积层 ──────────────────────────────────────────
+        // He 初始化：权重 ~ N(0, sqrt(2 / fan_in))，适合 ReLU 激活，防止初始梯度消失/爆炸
         Random rand = new Random(42);
-
         convNeuron[] neurons = new convNeuron[numFilters];
         for (int f = 0; f < numFilters; f++) {
             double[][][] kernel = new double[channels][kernelSize][kernelSize];
             double std = Math.sqrt(2.0 / (channels * kernelSize * kernelSize));
-            for (int c = 0; c < channels; c++) {
-                for (int i = 0; i < kernelSize; i++) {
-                    for (int j = 0; j < kernelSize; j++) {
+            for (int c = 0; c < channels; c++)
+                for (int i = 0; i < kernelSize; i++)
+                    for (int j = 0; j < kernelSize; j++)
                         kernel[c][i][j] = rand.nextGaussian() * std;
-                    }
-                }
-            }
             neurons[f] = new convNeuron(kernel, 0.0);
         }
         convLayer cL = new convLayer(neurons);
 
-        // ReLU激活层：将负值置0，引入非线性
-        activateLayer aL = new activateLayer(new ReLU());
+        activateLayer      aL = new activateLayer(new ReLU());      // ReLU：引入非线性
+        poolingLayer       pL = new poolingLayer(2, 2);             // 2×2 最大池化
+        flattenLayer       fL = new flattenLayer();                  // 展平为一维向量
 
-        // 最大池化层(2x2)：图像尺寸减半，压缩特征图
-        poolingLayer pL  = new poolingLayer(2, 2);
-
-        // 展平层：三维特征图拉成一维向量
-        flattenLayer fL  = new flattenLayer();
-
-        // ══════════════════════════════════════════════════════════
-        // 3. 动态计算flatten后的维度
-        // ══════════════════════════════════════════════════════════
+        // ── 3. 动态推导 flatten 后的维度 ─────────────────────────────
+        // 不手动计算 (64-5+1)/2 等尺寸，直接跑一次前向传播拿到真实维度
         loader.reset();
         double[][][] sample  = loader.next();
-        double[][][] convOut = cL.forward(sample);
-        double[][][] reluOut = aL.forward(convOut);
-        double[][][] poolOut = pL.forward(reluOut);
-        double[]     flatOut = fL.forward(poolOut);
+        double[]     flatOut = fL.forward(pL.forward(aL.forward(cL.forward(sample))));
         int flatSize = flatOut.length;
         System.out.println("flatten 后维度: " + flatSize);
 
-        // ══════════════════════════════════════════════════════════
-        // 4. 初始化全连接层
-        // ══════════════════════════════════════════════════════════
+        // ── 4. 初始化全连接层 ────────────────────────────────────────
+        // He 初始化：权重 ~ N(0, sqrt(2 / flatSize))
         double[][] denseW = new double[numClasses][flatSize];
         double std = Math.sqrt(2.0 / flatSize);
-        for (int i = 0; i < numClasses; i++) {
-            for (int j = 0; j < flatSize; j++) {
+        for (int i = 0; i < numClasses; i++)
+            for (int j = 0; j < flatSize; j++)
                 denseW[i][j] = rand.nextGaussian() * std;
-            }
-        }
-        double[] denseB = new double[numClasses];
-        denseLayer dL = new denseLayer(denseW, denseB);
+        double[]            denseB = new double[numClasses];
+        denseLayer          dL     = new denseLayer(denseW, denseB);
+        activateVectorLayer avL    = new activateVectorLayer(new Sigmoid());
 
-        // Sigmoid激活：输出压缩到(0,1)
-        activateVectorLayer avL = new activateVectorLayer(new Sigmoid());
-
-        // 组装CNN：卷积→激活→池化→展平→全连接→激活
         CNN cnn = new CNN(cL, aL, pL, fL, dL, avL);
 
-        // ══════════════════════════════════════════════════════════
-        // 5. 训练：前向传播 + 计算MSE Loss + 反向传播
-        // ══════════════════════════════════════════════════════════
+        // ── 5. 训练循环 ──────────────────────────────────────────────
+        // ⚠ 注意：target[idx]=1.0 假设每类恰好1张图且按类别顺序排列
+        //         多张图时 idx 不等于类别编号，标签分配有误
         for (int epoch = 0; epoch < epochs; epoch++) {
             loader.reset();
             double totalLoss = 0;
-            int idx = 0;
-            int correct = 0;
+            int idx = 0, correct = 0;
 
             while (loader.hasNext()) {
+                int label = loader.currentLabel(); // 从文件名/子目录读取真实类别编号
                 double[][][] img = loader.next();
 
-                // 前向传播：图片 → 12个生肖的预测概率
+                // 前向传播
                 double[] out = cnn.forward(img);
 
-                // one-hot目标向量：第idx个位置为1，其余为0
+                // 构造 one-hot 目标向量：真实类别位置为1，其余为0
                 double[] target = new double[numClasses];
-                target[idx] = 1.0;
+                target[label] = 1.0;
 
-                // MSE Loss = mean((output - target)^2)
-                double loss = mseLoss(out, target);
-                totalLoss += loss;
-
-                // MSE 对输出的梯度，用来开始反向传播
+                // 计算 MSE Loss 和初始梯度
+                totalLoss += mseLoss(out, target);
                 double[] gradient = mseGradient(out, target);
 
-                // 反向传播：更新 dense weight/bias 和 conv kernel/bias
+                // 反向传播：更新所有层权重
                 cnn.backward(gradient, learningRate);
 
-                // 找预测概率最高的类别
-                int pred = maxIndex(out);
-                if (pred == idx) {
-                    correct++;
-                }
-
+                if (maxIndex(out) == label) correct++;
                 idx++;
             }
 
@@ -125,99 +93,63 @@ public class train {
                     epoch, totalLoss / idx, correct, idx);
         }
 
-        // ══════════════════════════════════════════════════════════
-        // 6. 训练后重新测试每张图片
-        // ══════════════════════════════════════════════════════════
+        // ── 6. 训练后逐张测试 ─────────────────────────────────────────
         loader.reset();
         double totalLoss = 0;
-        int idx = 0;
-        int correct = 0;
-
+        int idx = 0, correct = 0;
         while (loader.hasNext()) {
-            String name = loader.currentFileName();
+            String name  = loader.currentFileName();
+            int    label = loader.currentLabel();
             double[][][] img = loader.next();
-
-            double[] out = cnn.forward(img);
-
+            double[] out    = cnn.forward(img);
             double[] target = new double[numClasses];
-            target[idx] = 1.0;
-
-            double loss = mseLoss(out, target);
-            totalLoss += loss;
-
+            target[label] = 1.0;
+            totalLoss += mseLoss(out, target);
             int pred = maxIndex(out);
-            if (pred == idx) {
-                correct++;
-            }
-
-            System.out.printf("[%d] %s | 真实=%d 预测=%d loss=%.4f%n",
-                    idx, name, idx, pred, loss);
+            if (pred == label) correct++;
+            System.out.printf("[%d] %s | 真实=%d 预测=%d loss=%.4f%n", idx, name, label, pred, mseLoss(out, target));
             idx++;
         }
-
         System.out.printf("%n训练后平均 loss: %.4f | accuracy=%d/%d%n", totalLoss / idx, correct, idx);
 
-        // ══════════════════════════════════════════════════════════
-        // 6. 一致性测试：同一张图片输入两次，预测结果应完全相同
-        // ══════════════════════════════════════════════════════════
+        // ── 7. 一致性测试：同一张图输两次，结果必须完全相同 ─────────────
+        // 若结果不同，说明网络中存在随机性或状态未正确重置
         System.out.println("\n── 一致性测试 ──");
-        loader.reset();
-        double[][][] img1 = loader.next();
-        double[] out1 = cnn.forward(img1);
-
-        loader.reset();
-        double[][][] img2 = loader.next();
-        double[] out2 = cnn.forward(img2);
-
-        // 比较两次输出是否完全一致
+        loader.reset(); double[] out1 = cnn.forward(loader.next());
+        loader.reset(); double[] out2 = cnn.forward(loader.next());
         boolean same = true;
         for (int i = 0; i < out1.length; i++) {
-            if (Math.abs(out1[i] - out2[i]) > 1e-10) {
-                same = false;
-                break;
-            }
+            if (Math.abs(out1[i] - out2[i]) > 1e-10) { same = false; break; }
         }
         System.out.println("两次预测结果一致: " + same);
-        System.out.print("第一次输出: ");
-        for (double v : out1) System.out.printf("%.4f ", v);
-        System.out.print("\n第二次输出: ");
-        for (double v : out2) System.out.printf("%.4f ", v);
-        System.out.println();
     }
+
+    // MSE = (1/2) * Σ(output[i] - target[i])²，系数1/2使导数形式简洁
     private static double mseLoss(double[] output, double[] target) {
-        if (output.length != target.length) {
-            throw new IllegalArgumentException("output length must match target length.");
-        }
-
-        double loss = 0.0;
+        if (output.length != target.length) throw new IllegalArgumentException("length mismatch");
+        double loss = 0;
         for (int i = 0; i < output.length; i++) {
-            double diff = output[i] - target[i];
-            loss += diff * diff;
+            double d = output[i] - target[i];
+            loss += d * d;
         }
-
-        return loss / output.length;
+        return loss / 2;
     }
 
+    // ∂MSE/∂output[i] = output[i] - target[i]，1/2与平方的2恰好约掉
     private static double[] mseGradient(double[] output, double[] target) {
-        if (output.length != target.length) {
-            throw new IllegalArgumentException("output length must match target length.");
-        }
-
-        double[] gradient = new double[output.length];
+        if (output.length != target.length) throw new IllegalArgumentException("length mismatch");
+        double[] g = new double[output.length];
         for (int i = 0; i < output.length; i++) {
-            gradient[i] = 2.0 * (output[i] - target[i]) / output.length;
+            g[i] = output[i] - target[i];
         }
-
-        return gradient;
+        return g;
     }
 
+    // 返回概率最大的类别下标，作为预测结果
     private static int maxIndex(double[] values) {
         int max = 0;
-        for (int i = 1; i < values.length; i++) {
-            if (values[i] > values[max]) {
-                max = i;
-            }
-        }
+        for (int i = 1; i < values.length; i++)
+            if (values[i] > values[max]) max = i;
         return max;
     }
 }
