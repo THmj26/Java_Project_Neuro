@@ -1,6 +1,8 @@
 // 卷积层：管理多个卷积核（convNeuron），每个核独立提取一种特征，输出多张特征图
+// 核心原理：
 //   前向：N 个 filter 各自做一次卷积，输出 N 张特征图，堆叠成 [N][outRow][outCol]
 //   反向：每个 filter 收到对应特征图的梯度，各自更新自身权重；
+//         对输入的梯度 = 所有 filter 传回梯度的逐元素之和（因为同一输入被所有 filter 共享）
 public class convLayer {
     convNeuron[] filters; // 所有卷积核，每个 filter 独立提取一种特征
 

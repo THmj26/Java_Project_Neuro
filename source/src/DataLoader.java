@@ -11,7 +11,7 @@ import javax.imageio.ImageIO;
 //   平铺模式：images/0_rat.jpg, 1_ox.jpg ...  文件名首字符为类别编号
 //   子目录模式：images/0/rat1.jpg, images/1/ox1.jpg ...  子目录名为类别编号（推荐）
 // 核心原理：
-//   灰度转换：gray = 0.299*R + 0.587*G + 0.114*B（ITU-R BT.601 加权公式）
+//   灰度转换：gray = 0.299*R + 0.587*G + 0.114*B（ITU-R BT.601 加权公式，模拟人眼对绿色最敏感）
 //   归一化：像素值除以 255，压缩到 [0,1]，防止数值过大影响梯度稳定性
 //   迭代器模式：hasNext/next/reset 控制按需逐张读取，避免一次性加载所有图片占用大量内存
 public class DataLoader {

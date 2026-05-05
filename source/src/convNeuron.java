@@ -1,91 +1,92 @@
+// 单个卷积核（卷积神经元）：CNN 中最基本的计算单元，类比全连接层中的单个神经元
+// 核心原理：
+//   前向：对输入的每个通道与对应 kernel 做滑动互相关，所有通道结果相加得到一张输出特征图
+//         output[i][j] = Σ_c Σ_ki Σ_kj  input[c][i+ki][j+kj] * kernel[c][ki][kj]  + bias
+//   反向：需要求三个梯度
+//         ∂L/∂kernel[c][ki][kj] = Σ_i Σ_j  pdz[i][j] * input[c][i+ki][j+kj]   （用于更新权重）
+//         ∂L/∂input[c][r][s]    = Σ_i Σ_j  pdz[i][j] * kernel[c][r-i][s-j]     （传给上一层）
+//         ∂L/∂bias              = Σ_i Σ_j  pdz[i][j]                             （更新偏置）
 public class convNeuron {
-    //一个卷积计算就是相当于之前NN中的一个神经元 是卷积运算中的基本单位
-    double[][][] kernel;
+    double[][][] kernel;    // [通道数][核行][核列]
     double bias;
-    double[][][] lastInput;
+    double[][][] lastInput; // 缓存前向输入，反向传播时使用
 
-    convNeuron(double[][][] k, double b){
-        kernel=k;
-        bias=b;
+    convNeuron(double[][][] k, double b) {
+        kernel = k;
+        bias = b;
     }
-    //这里是对传入的多个二维图像做卷积运算
-    //每一张图像有其对应的kernel
-    //每一个点的卷积结果等于 每一个kernel和对应输入 在这个点的卷积结果之和
-    public double[][] forward(double[][][] input){
-        lastInput = input;
-        int pictures=input.length;
-        int inputRow=input[0].length;
-        int inputColumn=input[0][0].length;
 
-        int kernelI=kernel.length;
-        int kernelR=kernel[0].length;
-        int kernelC=kernel[0][0].length;
+    // ── 前向传播 ──────────────────────────────────────────────────────────────
+    // input: [channels][inputRow][inputCol]
+    // 返回:  [outRow][outCol]，outRow = inputRow - kernelR + 1（无 padding，每步滑动1格）
+    public double[][] forward(double[][][] input) {
+        lastInput = input;                      // 缓存输入，反向传播计算 ∂L/∂kernel 时需要用到
+        int pictures    = input.length;         // 输入通道数（灰度图为1）
+        int inputRow    = input[0].length;      // 输入特征图的行数
+        int inputColumn = input[0][0].length;   // 输入特征图的列数
+        int kernelR     = kernel[0].length;     // 卷积核的行数
+        int kernelC     = kernel[0][0].length;  // 卷积核的列数
 
-        //这里的加一对应的是kernel这个矩阵和初始数据的第一个结果 差值是能走多少步 就会产生多少阶
-        int outR=inputRow-kernelR+1;
-        int outC=inputColumn-kernelC+1;
+        int outR = inputRow    - kernelR + 1;   // 输出行数：滑动窗口能放下的次数
+        int outC = inputColumn - kernelC + 1;   // 输出列数：同上
 
-        double[][] output=new double[outR][outC];
-        for(int i=0;i<outR;i++){
-            for(int j=0;j<outC;j++){
-                double sum=0;
-                //外层循环用来给最终输出赋值
-                //以及遍历输入的数据
-                for (int c=0;c<pictures;c++){
-                    //c可以用来控制第几张图片
-                    //在这里可以讲kernel看作NN中每一个神经元的权重！
-                    for(int ki=0;ki<kernelR;ki++){
-                        for(int kj=0;kj<kernelC;kj++){
-                            sum+=input[c][i+ki][j+kj]*kernel[c][ki][kj];
+        double[][] output = new double[outR][outC]; // 输出特征图，初始全0
+        for (int i = 0; i < outR; i++) {            // 遍历输出特征图的每一行
+            for (int j = 0; j < outC; j++) {        // 遍历输出特征图的每一列
+                double sum = 0;                     // 当前输出位置的累加值
+                for (int c = 0; c < pictures; c++) {        // 遍历每个输入通道
+                    for (int ki = 0; ki < kernelR; ki++) {  // 遍历核的每一行
+                        for (int kj = 0; kj < kernelC; kj++) { // 遍历核的每一列
+                            // 输入位置 = 输出位置(i,j) + 核内偏移(ki,kj)
+                            // 对应元素相乘后累加，即互相关运算
+                            sum += input[c][i + ki][j + kj] * kernel[c][ki][kj];
                         }
                     }
                 }
-                output[i][j]=sum+bias;
+                output[i][j] = sum + bias; // 加上偏置得到最终输出值
             }
         }
         return output;
     }
+
+    // ── 反向传播 ──────────────────────────────────────────────────────────────
+    // pdz:   ∂L/∂output，[outRow][outC]，来自后一层（激活层）传回的梯度
+    // 返回:  pdx = ∂L/∂input，[channels][inputRow][inputCol]，继续向前传给上一层
     public double[][][] backward(double[][] pdz, double learningRate) {
-        int pictures = lastInput.length;
-        int inputRow = lastInput[0].length;
-        int inputColumn = lastInput[0][0].length;
+        int pictures    = lastInput.length;         // 通道数
+        int inputRow    = lastInput[0].length;      // 输入行数
+        int inputColumn = lastInput[0][0].length;   // 输入列数
+        int kernelR     = kernel[0].length;         // 核行数
+        int kernelC     = kernel[0][0].length;      // 核列数
+        int outR        = pdz.length;               // 输出梯度行数
+        int outC        = pdz[0].length;            // 输出梯度列数
 
-        int kernelR = kernel[0].length;
-        int kernelC = kernel[0][0].length;
+        double[][][] pdx        = new double[pictures][inputRow][inputColumn]; // ∂L/∂input，初始全0
+        double[][][] gradKernel = new double[pictures][kernelR][kernelC];      // ∂L/∂kernel，初始全0
+        double gradBias = 0.0;                      // ∂L/∂bias，初始为0
 
-        int outR = pdz.length;
-        int outC = pdz[0].length;
+        for (int i = 0; i < outR; i++) {            // 遍历输出梯度的每一行
+            for (int j = 0; j < outC; j++) {        // 遍历输出梯度的每一列
+                double grad = pdz[i][j];            // 当前输出位置的梯度值
+                gradBias += grad;                   // ∂L/∂bias = Σ 所有输出位置的梯度之和
 
-        double[][][] pdx = new double[pictures][inputRow][inputColumn];
-        double[][][] gradKernel = new double[pictures][kernelR][kernelC];
-        double gradBias = 0.0;
+                for (int c = 0; c < pictures; c++) {        // 遍历每个通道
+                    for (int ki = 0; ki < kernelR; ki++) {  // 遍历核的每一行
+                        for (int kj = 0; kj < kernelC; kj++) { // 遍历核的每一列
+                            // ∂L/∂kernel[c][ki][kj]：产生 output[i][j] 时用到了 input[c][i+ki][j+kj]
+                            // 所以链式法则：∂L/∂kernel += ∂L/∂output * ∂output/∂kernel = grad * input
+                            gradKernel[c][ki][kj] += grad * lastInput[c][i + ki][j + kj];
 
-        for (int i = 0; i < outR; i++) {
-            for (int j = 0; j < outC; j++) {
-                double grad = pdz[i][j];
-                gradBias += grad;
-
-                for (int c = 0; c < pictures; c++) {
-                    for (int ki = 0; ki < kernelR; ki++) {
-                        for (int kj = 0; kj < kernelC; kj++) {
-                            int inputR = i + ki;
-                            int inputC = j + kj;
-
-                            gradKernel[c][ki][kj] += grad * lastInput[c][inputR][inputC];
-                            pdx[c][inputR][inputC] += grad * kernel[c][ki][kj];
-                            //这里求和的原因是因为 卷积中 一个输出会和多个k与x有关
-                            //其实就是找最后结果 是对应原本输入中的那些数据
-                            //所以想要寻找位置只需要再重新走一遍来时路就可以了
-                            //那么从节点i，j位置来说kernel中每一个k对应的输入就是ki+i，kj+j
-
-                            //同样的对于x的偏导来说也是一样的 求和x有关的k的和
-                            //那么
+                            // ∂L/∂input[c][i+ki][j+kj]：该输入位置被多个输出位置共享，因此需要累加
+                            // 链式法则：∂L/∂input += ∂L/∂output * ∂output/∂input = grad * kernel
+                            pdx[c][i + ki][j + kj] += grad * kernel[c][ki][kj];
                         }
                     }
                 }
             }
         }
 
+        // SGD 权重更新：kernel -= lr * ∂L/∂kernel
         for (int c = 0; c < pictures; c++) {
             for (int ki = 0; ki < kernelR; ki++) {
                 for (int kj = 0; kj < kernelC; kj++) {
@@ -93,9 +94,8 @@ public class convNeuron {
                 }
             }
         }
+        bias -= learningRate * gradBias; // SGD 偏置更新：bias -= lr * ∂L/∂bias
 
-        bias -= learningRate * gradBias;//这里的gradbias就是上一层中所有的梯度之和
-
-        return pdx;
+        return pdx; // 将 ∂L/∂input 传给前一层（activateLayer）继续反向传播
     }
 }

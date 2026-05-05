@@ -1,43 +1,47 @@
-//import javax.swing.*;
-
-//这里是对所有的卷积结果图片进行激活
-//在这里引入激活层是因为 每一个神经元一个激活函数太麻烦
-//而且一般而言同一层中的神经元的激活函数是一致的
+// 特征图激活层：对卷积输出的每张特征图逐元素应用激活函数
+// 核心原理：
+//   前向：output[c][i][j] = f(input[c][i][j])，f 由构造时传入的激活函数决定
+//   反向：链式法则，dL/dinput[c][i][j] = dL/doutput[c][i][j] * f'(input[c][i][j])
+//         f' 需要激活前的原始值，因此必须缓存 lastInput
 public class activateLayer {
     private activateFuction af;
-    private double[][][] lastInput;
+    private double[][][] lastInput; // 缓存激活前的值，反向传播求导时使用
 
-    activateLayer(activateFuction a){
-        af=a;
+    activateLayer(activateFuction a) {
+        af = a;
     }
 
-    public double[][][] forward(double[][][] input){
-        lastInput=input.clone();
-        int pictureI=input.length;//图片数量
-        int pictureR=input[0].length;//单张图片的行数
-        int pictureC=input[0][0].length;//列数
+    // 前向传播：对所有特征图逐元素激活
+    // input/output: [numFilters][rows][cols]
+    public double[][][] forward(double[][][] input) {
+        lastInput = input.clone();
+        int C = input.length;
+        int R = input[0].length;
+        int cols = input[0][0].length;
 
-        double[][][] output=new double[pictureI][pictureR][pictureC];
-        //对每一张图片中的每一个顶点上的数据进行激活
-        //外层是对图片遍历
-        for(int c=0;c<pictureI;c++){
-            for(int i=0;i<pictureR;i++){
-                for(int j=0;j<pictureC;j++){
-                    output[c][i][j]=af.activate(input[c][i][j]);
+        double[][][] output = new double[C][R][cols];
+        for (int c = 0; c < C; c++) {
+            for (int i = 0; i < R; i++) {
+                for (int j = 0; j < cols; j++) {
+                    output[c][i][j] = af.activate(input[c][i][j]);
                 }
             }
         }
         return output;
     }
-    public double[][][] backward(double[][][] pdx){
-        int c= pdx.length;
-        int R=pdx[0].length;
-        int C=pdx[0][0].length;
-        double[][][] gradient=new double[c][R][C];
-        for(int p=0;p<c;p++){
-            for(int i=0;i<R;i++){
-                for(int j=0;j<C;j++){
-                    gradient[p][i][j]=af.derivative(lastInput[p][i][j])*pdx[p][i][j];
+
+    // 反向传播：将后层梯度乘以激活函数导数，传给卷积层
+    // pdx: [numFilters][rows][cols]，即 ∂L/∂output
+    // 返回: ∂L/∂input，形状相同
+    public double[][][] backward(double[][][] pdx) {
+        int C = pdx.length;
+        int R = pdx[0].length;
+        int cols = pdx[0][0].length;
+        double[][][] gradient = new double[C][R][cols];
+        for (int p = 0; p < C; p++) {
+            for (int i = 0; i < R; i++) {
+                for (int j = 0; j < cols; j++) {
+                    gradient[p][i][j] = af.derivative(lastInput[p][i][j]) * pdx[p][i][j];
                 }
             }
         }
