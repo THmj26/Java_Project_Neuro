@@ -52,8 +52,6 @@ public class predict {
         ModelIO.load(cL, dL, "model.txt");
 
         // ── 3. 读取图片并推理 ─────────────────────────────────────────
-        DataLoader loader = new DataLoader(java.nio.file.Paths.get(imagePath).getParent().toString(), true);
-        // 直接读取单张图片
         double[][][] img = loadSingleImage(imagePath);
         double[] output = cnn.forward(img);
 
