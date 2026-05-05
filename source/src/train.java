@@ -112,6 +112,9 @@ public class train {
         }
         System.out.printf("%n训练后平均 loss: %.4f | accuracy=%d/%d%n", totalLoss / idx, correct, idx);
 
+        // 保存训练好的权重，供 predict.java 复用
+        ModelIO.save(cL, dL, "model.txt");
+
         // ── 7. 一致性测试：同一张图输两次，结果必须完全相同 ─────────────
         // 若结果不同，说明网络中存在随机性或状态未正确重置
         System.out.println("\n── 一致性测试 ──");
