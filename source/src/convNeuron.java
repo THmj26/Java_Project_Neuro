@@ -20,7 +20,10 @@ public class convNeuron {
     // input: [channels][inputRow][inputCol]
     // 返回:  [outRow][outCol]，outRow = inputRow - kernelR + 1（无 padding，每步滑动1格）
     public double[][] forward(double[][][] input) {
-        lastInput = input;                      // 缓存输入，反向传播计算 ∂L/∂kernel 时需要用到
+        lastInput = new double[input.length][input[0].length][input[0][0].length];
+        for (int c = 0; c < input.length; c++)
+            for (int i = 0; i < input[c].length; i++)
+                lastInput[c][i] = input[c][i].clone(); // 深拷贝，防止外部修改污染反向传播
         int pictures    = input.length;         // 输入通道数（灰度图为1）
         int inputRow    = input[0].length;      // 输入特征图的行数
         int inputColumn = input[0][0].length;   // 输入特征图的列数
