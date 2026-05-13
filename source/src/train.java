@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 import java.util.Random;
+import java.util.NoSuchElementException;
 
 // 主训练脚本：加载十二生肖图片，初始化 CNN，执行多轮前向+反向传播训练
 // 流程：初始化权重 → 动态推导 flatten 维度 → 训练循环（前向/MSE/反向/更新）→ 测试报告
@@ -62,10 +63,19 @@ public class train {
 
         // ── 5. 检测已保存模型，决定是加载还是重新训练 ─────────────────
         File modelFile = new File("model.txt");
-        if (modelFile.exists()) {
-            ModelIO.load(cL, dL, "model.txt");
-            System.out.println("已加载保存的模型，跳过训练");
-        } else {
+        boolean shouldTrain = true;
+
+        if (modelFile.exists() && modelFile.length() != 0) {
+            try {
+                ModelIO.load(cL, dL, "model.txt");
+                System.out.println("已加载保存的模型，跳过训练");
+                shouldTrain = false;
+            } catch (NoSuchElementException e) {
+                System.out.println("模型文件内容不完整，重新训练并覆盖保存文件");
+            }
+        }
+
+        if (shouldTrain) {
             for (int epoch = 0; epoch < epochs; epoch++) {
                 loader.reset();
                 double totalLoss = 0;
