@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
@@ -59,41 +60,38 @@ public class train {
 
         CNN cnn = new CNN(cL, aL, pL, fL, dL, avL);
 
-        // ── 5. 训练循环 ──────────────────────────────────────────────
-        // ⚠ 注意：target[idx]=1.0 假设每类恰好1张图且按类别顺序排列
-        //         多张图时 idx 不等于类别编号，标签分配有误
-        for (int epoch = 0; epoch < epochs; epoch++) {
-            loader.reset();
-            double totalLoss = 0;
-            int idx = 0, correct = 0;
+        // ── 5. 检测已保存模型，决定是加载还是重新训练 ─────────────────
+        File modelFile = new File("model.txt");
+        if (modelFile.exists()) {
+            ModelIO.load(cL, dL, "model.txt");
+            System.out.println("已加载保存的模型，跳过训练");
+        } else {
+            for (int epoch = 0; epoch < epochs; epoch++) {
+                loader.reset();
+                double totalLoss = 0;
+                int idx = 0, correct = 0;
 
-            while (loader.hasNext()) {
-                int label = loader.currentLabel(); // 从文件名/子目录读取真实类别编号
-                double[][][] img = loader.next();
+                while (loader.hasNext()) {
+                    int label = loader.currentLabel();
+                    double[][][] img = loader.next();
+                    double[] out = cnn.forward(img);
+                    double[] target = new double[numClasses];
+                    target[label] = 1.0;
+                    totalLoss += mseLoss(out, target);
+                    double[] gradient = mseGradient(out, target);
+                    cnn.backward(gradient, learningRate);
+                    if (maxIndex(out) == label) correct++;
+                    idx++;
+                }
 
-                // 前向传播
-                double[] out = cnn.forward(img);
-
-                // 构造 one-hot 目标向量：真实类别位置为1，其余为0
-                double[] target = new double[numClasses];
-                target[label] = 1.0;
-
-                // 计算 MSE Loss 和初始梯度
-                totalLoss += mseLoss(out, target);
-                double[] gradient = mseGradient(out, target);
-
-                // 反向传播：更新所有层权重
-                cnn.backward(gradient, learningRate);
-
-                if (maxIndex(out) == label) correct++;
-                idx++;
+                System.out.printf("epoch=%d | avg loss=%.6f | accuracy=%d/%d%n",
+                        epoch, totalLoss / idx, correct, idx);
             }
 
-            System.out.printf("epoch=%d | avg loss=%.6f | accuracy=%d/%d%n",
-                    epoch, totalLoss / idx, correct, idx);
+            ModelIO.save(cL, dL, "model.txt");
         }
 
-        // ── 6. 训练后逐张测试 ─────────────────────────────────────────
+        // ── 6. 逐张测试（加载或训练后均执行）────────────────────────────
         loader.reset();
         double totalLoss = 0;
         int idx = 0, correct = 0;
@@ -110,10 +108,7 @@ public class train {
             System.out.printf("[%d] %s | 真实=%d 预测=%d loss=%.4f%n", idx, name, label, pred, mseLoss(out, target));
             idx++;
         }
-        System.out.printf("%n训练后平均 loss: %.4f | accuracy=%d/%d%n", totalLoss / idx, correct, idx);
-
-        // 保存训练好的权重，供 predict.java 复用
-        ModelIO.save(cL, dL, "model.txt");
+        System.out.printf("%n平均 loss: %.4f | accuracy=%d/%d%n", totalLoss / idx, correct, idx);
 
         // ── 7. 一致性测试：同一张图输两次，结果必须完全相同 ─────────────
         // 若结果不同，说明网络中存在随机性或状态未正确重置
